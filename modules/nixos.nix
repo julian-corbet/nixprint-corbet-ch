@@ -18,6 +18,11 @@ in
       inherit drivers;
     };
 
+    # cups-pdf is a service on NixOS, not a package: services.printing.cups-pdf wires its own
+    # wrapped driver (the binary needs to run as root to reassign ownership of what it writes).
+    # Selecting the "pdf-printer" extra therefore flips an option rather than installing anything.
+    services.printing.cups-pdf.enable = lib.mkIf (lib.elem "pdf-printer" cfg.extras) true;
+
     # Discovery is two halves; nssmdns is the half everyone forgets.
     services.avahi = lib.mkIf cfg.discovery {
       enable = true;

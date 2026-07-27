@@ -29,7 +29,11 @@
 
   # ── Optional extras ─────────────────────────────────────────────────────────────────────────
   extras = {
-    pdf-printer = { arch = "cups-pdf"; nixpkgs = "cups-pdf-filter"; };
+    # nixpkgs has no cups-pdf PACKAGE to install. NixOS provides it as a service option
+    # (services.printing.cups-pdf, which wires its own wrapped driver), so the NixOS backend
+    # enables that instead of installing anything -- see modules/nixos.nix. null here is correct
+    # and not a gap: naming a package would be naming one that does not exist.
+    pdf-printer = { arch = "cups-pdf"; nixpkgs = null; };
     gui = { arch = "system-config-printer"; nixpkgs = "system-config-printer"; };
   };
 
