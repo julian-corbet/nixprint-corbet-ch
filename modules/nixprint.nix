@@ -6,13 +6,10 @@
 # work, and years later nobody remembers which of the three installed driver sets is the one
 # actually claiming the queue. That is fine until a rebuild, and then it is not.
 #
-# This module does NOT touch queues. Adding a printer is a runtime act against CUPS, and CUPS keeps
-# that state in /etc/cups/printers.conf; re-declaring it here would fight the daemon for ownership
-# of something it manages perfectly well. What is declared is the SUPPORTING SET -- which drivers
-# are present, whether discovery works, whether there is a PDF pseudo-printer -- because that is
-# the part that silently rots.
-#
-# So: a working printer stays working. This makes the packages behind it intentional, nothing more.
+# CUPS owns the runtime files, but it is not the source of truth for a managed queue. This module
+# declares the queue inputs and each backend reconciles them through CUPS' own lpadmin interface.
+# A small manifest limits removal to queues that nixprint previously created; unrelated queues stay
+# CUPS-owned and untouched.
 { config, lib, ... }:
 let
   cfg = config.nixprint;
@@ -33,7 +30,7 @@ let
 in
 {
   options.nixprint = {
-    enable = lib.mkEnableOption "printing: CUPS plus a declared driver set";
+    enable = lib.mkEnableOption "printing: CUPS, declared drivers, and managed queues";
 
     drivers = mkGroup "printer driver sets to install" cat.drivers;
     extras = mkGroup "optional printing extras" cat.extras;
@@ -42,18 +39,86 @@ in
       type = lib.types.bool;
       default = false;
       description = ''
-        Install and enable mDNS/Bonjour discovery for network printers (avahi + nss-mdns).
+        Install and enable mDNS/DNS-SD discovery for network printers through Avahi.
 
-        Both, deliberately: avahi finds the printer, nss-mdns is what lets glibc resolve the
-        resulting .local name. With only the first, a discovered printer is visible and
-        unreachable, which is a confusing way to spend an afternoon.
+        This makes CUPS' dnssd:// device URIs work. Host-name resolution of .local names is a
+        separate resolver concern and is intentionally not changed here.
       '';
+    };
+
+    printers = lib.mkOption {
+      type = lib.types.attrsOf (lib.types.submodule {
+        options = {
+          deviceUri = lib.mkOption {
+            type = lib.types.str;
+            description = "CUPS device URI, as reported by lpinfo -v.";
+          };
+
+          model = lib.mkOption {
+            type = lib.types.str;
+            description = "CUPS model or PPD identifier, as reported by lpinfo -m.";
+          };
+
+          systemManagerModel = lib.mkOption {
+            type = lib.types.nullOr lib.types.str;
+            default = null;
+            description = ''
+              CUPS model or PPD identifier for the system-manager backend when its package layout
+              differs from the NixOS driver interface. Defaults to `model`.
+            '';
+          };
+
+          location = lib.mkOption {
+            type = lib.types.nullOr lib.types.str;
+            default = null;
+            description = "Optional human-readable printer location.";
+          };
+
+          description = lib.mkOption {
+            type = lib.types.nullOr lib.types.str;
+            default = null;
+            description = "Optional human-readable printer description.";
+          };
+
+          shared = lib.mkOption {
+            type = lib.types.bool;
+            default = false;
+            description = "Whether this local CUPS queue is shared with other clients.";
+          };
+
+          ppdOptions = lib.mkOption {
+            type = lib.types.attrsOf lib.types.str;
+            default = { };
+            description = "PPD options to enforce for this queue, as key-value strings.";
+          };
+        };
+      });
+      default = { };
+      description = ''
+        CUPS queues managed by nixprint. Attribute names are CUPS queue names. nixprint removes
+        only queues recorded in its own managed-queue manifest.
+      '';
+    };
+
+    defaultPrinter = lib.mkOption {
+      type = lib.types.nullOr lib.types.str;
+      default = null;
+      description = "Managed CUPS queue to make the system default.";
     };
 
     archPackages = lib.mkOption {
       type = lib.types.listOf lib.types.str;
       readOnly = true;
       description = "Selected packages as pacman names, for a host's own reconciler to consume.";
+    };
+
+    retiredArchPackages = lib.mkOption {
+      type = lib.types.listOf lib.types.str;
+      default = [ ];
+      description = ''
+        Exact Arch packages to remove after the selected package set is present. This is narrowly
+        scoped cleanup for a reviewed migration, not a general undeclared-package prune.
+      '';
     };
 
     driverAttrs = lib.mkOption {
@@ -65,7 +130,7 @@ in
   };
 
   config = {
-    nixprint.archPackages = lib.unique (map (p: p.arch) selected);
+    nixprint.archPackages = lib.unique (lib.concatMap (p: p.arch) selected);
     nixprint.driverAttrs =
       lib.unique (map (p: p.nixpkgs) (lib.filter (p: p.nixpkgs != null) driverSel));
   };

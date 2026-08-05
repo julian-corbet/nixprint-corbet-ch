@@ -1,13 +1,19 @@
-# NixOS backend — drives services.printing rather than installing packages by hand.
-#
-# On NixOS, printing is a service with a `drivers` list, not a pile of system packages. Putting
-# hplip into environment.systemPackages would install it without CUPS ever finding its PPDs, which
-# is a very confusing kind of "installed but does nothing".
+# NixOS backend — drives services.printing and reconciles only nixprint-managed CUPS queues.
 { config, lib, pkgs, ... }:
 let
   cfg = config.nixprint;
   resolve = n: lib.attrByPath (lib.splitString "." n) null pkgs;
   drivers = lib.filter (d: d != null) (map resolve cfg.driverAttrs);
+  queueReconciler = import ../lib/reconcile-queues.nix {
+    inherit lib pkgs cfg;
+    name = "nixprint-nixos-queues";
+    programs = {
+      lpadmin = "${pkgs.cups}/bin/lpadmin";
+      lpstat = "${pkgs.cups}/bin/lpstat";
+      cupsenable = "${pkgs.cups}/bin/cupsenable";
+      accept = "${pkgs.cups}/bin/accept";
+    };
+  };
 in
 {
   imports = [ ./nixprint.nix ];
@@ -23,11 +29,24 @@ in
     # Selecting the "pdf-printer" extra therefore flips an option rather than installing anything.
     services.printing.cups-pdf.enable = lib.mkIf (lib.elem "pdf-printer" cfg.extras) true;
 
-    # Discovery is two halves; nssmdns is the half everyone forgets.
+    # CUPS resolves dnssd:// queue URIs through Avahi. Resolver policy for arbitrary .local names
+    # belongs to the host, not the printing module.
     services.avahi = lib.mkIf cfg.discovery {
       enable = true;
-      nssmdns4 = true;
       openFirewall = true;
+    };
+
+    systemd.services.nixprint-reconcile = {
+      description = "nixprint: reconcile managed CUPS queues";
+      wantedBy = [ "multi-user.target" ];
+      wants = [ "cups.service" ];
+      after = [ "cups.service" ];
+      restartTriggers = [ queueReconciler ];
+      serviceConfig = {
+        Type = "oneshot";
+        RemainAfterExit = true;
+        ExecStart = queueReconciler;
+      };
     };
 
     warnings = lib.optional (cfg.drivers == [ ])

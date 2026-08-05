@@ -12,19 +12,21 @@
   # gutenprint drives many inkjet/laser families directly, and hplip is HP's own stack. Which one
   # actually claims a given printer is decided by CUPS at queue-creation time, not here.
   drivers = {
-    hplip = { arch = "hplip"; nixpkgs = "hplip"; };
-    gutenprint = { arch = "gutenprint"; nixpkgs = "gutenprint"; };
-    foomatic = { arch = "foomatic-db"; nixpkgs = "foomatic-db"; };
-    foomatic-engine = { arch = "foomatic-db-engine"; nixpkgs = "foomatic-db-engine"; };
-    foomatic-nonfree = { arch = "foomatic-db-nonfree"; nixpkgs = "foomatic-db-nonfree"; };
-    splix = { arch = "splix"; nixpkgs = "splix"; };
+    hplip = { arch = [ "hplip" ]; nixpkgs = "hplip"; };
+    # Arch distributes the known-good static Gutenprint PPDs separately from the renderer. Nixpkgs
+    # packages both through gutenprint's CUPS driver interface.
+    gutenprint = { arch = [ "gutenprint" "foomatic-db-gutenprint-ppds" ]; nixpkgs = "gutenprint"; };
+    foomatic = { arch = [ "foomatic-db" ]; nixpkgs = "foomatic-db"; };
+    foomatic-engine = { arch = [ "foomatic-db-engine" ]; nixpkgs = "foomatic-db-engine"; };
+    foomatic-nonfree = { arch = [ "foomatic-db-nonfree" ]; nixpkgs = "foomatic-db-nonfree"; };
+    splix = { arch = [ "splix" ]; nixpkgs = "splix"; };
   };
 
   # ── The stack around CUPS ───────────────────────────────────────────────────────────────────
   core = {
-    cups = { arch = "cups"; nixpkgs = "cups"; };
-    filters = { arch = "cups-filters"; nixpkgs = "cups-filters"; };
-    ghostscript = { arch = "ghostscript"; nixpkgs = "ghostscript"; };
+    cups = { arch = [ "cups" ]; nixpkgs = "cups"; };
+    filters = { arch = [ "cups-filters" ]; nixpkgs = "cups-filters"; };
+    ghostscript = { arch = [ "ghostscript" ]; nixpkgs = "ghostscript"; };
   };
 
   # ── Optional extras ─────────────────────────────────────────────────────────────────────────
@@ -33,15 +35,14 @@
     # (services.printing.cups-pdf, which wires its own wrapped driver), so the NixOS backend
     # enables that instead of installing anything -- see modules/nixos.nix. null here is correct
     # and not a gap: naming a package would be naming one that does not exist.
-    pdf-printer = { arch = "cups-pdf"; nixpkgs = null; };
-    gui = { arch = "system-config-printer"; nixpkgs = "system-config-printer"; };
+    pdf-printer = { arch = [ "cups-pdf" ]; nixpkgs = null; };
+    gui = { arch = [ "system-config-printer" ]; nixpkgs = "system-config-printer"; };
   };
 
   # ── Network discovery ───────────────────────────────────────────────────────────────────────
-  # avahi alone is not enough: nss-mdns is what teaches glibc to resolve .local names, without
-  # which a discovered printer is visible but unreachable by hostname.
+  # CUPS resolves dnssd:// device URIs through Avahi. Host-name resolution of .local names is an
+  # independent host resolver policy, so nixprint deliberately does not replace /etc/nsswitch.conf.
   discovery = {
-    avahi = { arch = "avahi"; nixpkgs = "avahi"; };
-    nss-mdns = { arch = "nss-mdns"; nixpkgs = "nssmdns"; };
+    avahi = { arch = [ "avahi" ]; nixpkgs = "avahi"; };
   };
 }
