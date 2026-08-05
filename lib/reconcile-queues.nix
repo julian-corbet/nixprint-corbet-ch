@@ -13,7 +13,7 @@ let
     else
       ''
         case "$queue" in
-          ${lib.concatStringsSep "|" (map escape queueNames)}
+          ${lib.concatStringsSep "|" (map escape queueNames)})
             ;;
           *)
             if ${programs.lpstat} -p "$queue" >/dev/null 2>&1; then
