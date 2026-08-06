@@ -11,7 +11,9 @@ let
       lpadmin = "${pkgs.cups}/bin/lpadmin";
       lpstat = "${pkgs.cups}/bin/lpstat";
       cupsenable = "${pkgs.cups}/bin/cupsenable";
-      accept = "${pkgs.cups}/bin/accept";
+      # Nixpkgs installs the canonical CUPS command, not the legacy System V
+      # `accept` alias. Keep both backends on the command that actually ships.
+      accept = "${pkgs.cups}/bin/cupsaccept";
     };
   };
 in

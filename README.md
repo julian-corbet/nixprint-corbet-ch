@@ -27,7 +27,7 @@ same driver through a different CUPS model identifier than NixOS.
 ## Queue lifecycle
 
 - **CUPS remains the runtime owner.** nixprint never writes `printers.conf`; it uses `lpadmin`,
-  `cupsenable`, and `accept`, exactly as a CUPS administrator would.
+  `cupsenable`, and `cupsaccept`, exactly as a CUPS administrator would.
 - **Managed queues are bidirectional.** nixprint records only the queue names it created. Removing
   one from `nixprint.printers` removes that queue on the next reconciliation, while manual queues
   are never touched.
