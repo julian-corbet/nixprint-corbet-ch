@@ -13,7 +13,9 @@ let
       lpadmin = "/usr/bin/lpadmin";
       lpstat = "/usr/bin/lpstat";
       cupsenable = "/usr/bin/cupsenable";
-      accept = "/usr/bin/accept";
+      # Arch installs the CUPS command under its unambiguous upstream name;
+      # `accept` is the legacy System V alias and is not packaged.
+      accept = "/usr/bin/cupsaccept";
     };
   };
 
