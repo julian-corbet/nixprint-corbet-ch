@@ -24,7 +24,21 @@ let
     pkgs.writeShellScript "nixprint-system-manager-reconcile" ''
       set -euo pipefail
 
+      # Another converger (e.g. the host's package reconciler) may hold pacman's
+      # exclusive database lock right now: systemd After= ordering does not
+      # serialize oneshots that an activation restarts concurrently. Wait out a
+      # live transaction; a lock that outlives the wait is stale, and pacman's
+      # own diagnostic is the right error to surface then.
+      wait_for_pacman() {
+        local i=0
+        while [ -e /var/lib/pacman/db.lck ] && [ "$i" -lt 150 ]; do
+          ${pkgs.coreutils}/bin/sleep 2
+          i=$((i + 1))
+        done
+      }
+
       /usr/bin/systemctl enable --now cups.service avahi-daemon.service
+      wait_for_pacman
       /usr/bin/pacman -D --asexplicit ${lib.escapeShellArgs cfg.archPackages}
 
       retired=()
@@ -34,6 +48,7 @@ let
         fi
       done
       if [ "''${#retired[@]}" -gt 0 ]; then
+        wait_for_pacman
         /usr/bin/pacman -Rns --noconfirm "''${retired[@]}"
       fi
 
