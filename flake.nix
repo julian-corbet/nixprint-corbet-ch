@@ -1,5 +1,5 @@
 {
-  description = "nixprint — printing declared: CUPS, a chosen driver set, and discovery that actually resolves";
+  description = "nixprint — printing declared: CUPS, selected driver sets, DNS-SD discovery, and the managed queues that use them";
 
   # NO INPUTS. Options and a name table; `pkgs` comes from the consumer's own evaluation.
 
