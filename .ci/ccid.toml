@@ -2,9 +2,7 @@ schema = 1
 project = "nixprint-corbet-ch"
 
 [checks.module-eval]
-kind = "commands"
-commands = [["bash", "-c", "nix-instantiate --eval --strict --json --impure -E 'let lib = import <nixpkgs/lib>; result = lib.evalModules { modules = [ (import ./modules/nixprint.nix) ({ ... }: { nixprint.enable = true; }) ]; }; in result.config.nixprint.archPackages"]]
+commands = [["nix-instantiate", "--eval", "--strict", "--json", "--impure", "-E", 'let lib = import <nixpkgs/lib>; result = lib.evalModules { modules = [ (import ./modules/nixprint.nix) ({ ... }: { nixprint.enable = true; }) ]; }; in result.config.nixprint.archPackages']]
 
 [checks.catalogue]
-kind = "commands"
-commands = [["bash", "-c", "nix-instantiate --eval --strict --json --impure -E 'let c = import ./lib/drivers.nix {}; in { core = builtins.attrNames c.core; drivers = builtins.attrNames c.drivers; extras = builtins.attrNames c.extras; discovery = builtins.attrNames c.discovery; }'"]]
+commands = [["nix-instantiate", "--eval", "--strict", "--json", "--impure", "-E", 'let c = import ./lib/drivers.nix {}; in { core = builtins.attrNames c.core; drivers = builtins.attrNames c.drivers; extras = builtins.attrNames c.extras; discovery = builtins.attrNames c.discovery; }']]
