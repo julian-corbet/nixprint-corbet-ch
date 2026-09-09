@@ -3,7 +3,7 @@ project = "nixprint-corbet-ch"
 
 [checks.module-eval]
 kind = "commands"
-commands = [["nix-instantiate", "--eval", "--strict", "--json", "--impure", "-E", 'let lib = import <nixpkgs/lib>; result = lib.evalModules { modules = [ (import ./modules/nixprint.nix) ({ ... }: { nixprint.enable = true; }) ]; }; in result.config.nixprint.archPackages']]
+commands = [["nix-instantiate", "--eval", "--strict", "--json", "--impure", "-E", 'let lib = (builtins.getFlake "nixpkgs").lib; result = lib.evalModules { modules = [ (import ./modules/nixprint.nix) ({ ... }: { nixprint.enable = true; }) ]; }; in result.config.nixprint.archPackages']]
 
 [checks.catalogue]
 kind = "commands"
